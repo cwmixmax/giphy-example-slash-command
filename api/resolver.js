@@ -1,76 +1,46 @@
+'use strict';
+var Stackoverflow = require('../utils/stackoverflow');
 var key = require('../utils/key');
 var sync = require('synchronize');
 var request = require('request');
 var _ = require('underscore');
 
-
 // The API that returns the in-email representation.
 module.exports = function(req, res) {
   var term = req.query.text.trim();
+  let so = new Stackoverflow(key);
 
-  console.log('resolving ', term);
-  if (/^http:\/\/giphy\.com\/\S+/.test(term)) {
-    // Special-case: handle strings in the special URL form that are suggested by the /typeahead
-    // API. This is how the command hint menu suggests an exact Giphy image.
-    handleIdString(term.replace(/^http:\/\/giphy\.com\//, ''), req, res);
+  // TODO: technically, somebody could just quickly type a number here
+  // this would try to resolve that to a question ID...
+  // may or may not be intended behaviour
+  if (!isNaN(term)) {
+    so.get(term, (err, question) => {
+      if (err || !question || !question.items || question.items.length === 0) {
+        return res.status(500).send('Error');
+      }
+
+      const htmlResponse = convertQuestionToResponse(question.items[0]);
+      res.json({
+        body: htmlResponse
+      });
+    });
   } else {
-    // Else, if the user was typing fast and press enter before the /typeahead API can respond,
-    // Mixmax will just send the text to the /resolver API (for performance). Handle that here.
-    handleSearchString(term, req, res);
+    so.search(term, 1, (err, response) => {
+      if (err || !response || !response.items || response.items.length === 0) {
+        return res.status(500).send('Error');
+      }
+
+      const htmlResponse = convertQuestionToResponse(response.items[0]);
+      res.json({
+        body: htmlResponse
+      });
+    });
   }
 };
 
-function handleIdString(id, req, res) {
-  var response;
-  try {
-    response = sync.await(request({
-      url: 'http://api.giphy.com/v1/gifs/' + encodeURIComponent(id),
-      qs: {
-        api_key: key
-      },
-      gzip: true,
-      json: true,
-      timeout: 15 * 1000
-    }, sync.defer()));
-  } catch (e) {
-    res.status(500).send('Error');
-    return;
-  }
+function convertQuestionToResponse(question) {
+  const colour = question.is_answered ? 'green' : 'red';
+  const answerLabel = question.answer_count == 1 ? 'Answer' : 'Answers';
 
-  var image = response.body.data.images.original;
-  var width = image.width > 600 ? 600 : image.width;
-  var html = '<img style="max-width:100%;" src="' + image.url + '" width="' + width + '"/>';
-  res.json({
-    body: html
-    // Add raw:true if you're returning content that you want the user to be able to edit
-  });
-}
-
-function handleSearchString(term, req, res) {
-  var response;
-  try {
-    response = sync.await(request({
-      url: 'http://api.giphy.com/v1/gifs/random',
-      qs: {
-        tag: term,
-        api_key: key
-      },
-      gzip: true,
-      json: true,
-      timeout: 15 * 1000
-    }, sync.defer()));
-  } catch (e) {
-    res.status(500).send('Error');
-    return;
-  }
-
-  var data = response.body.data;
-
-  // Cap at 600px wide
-  var width = data.image_width > 600 ? 600 : data.image_width;
-  var html = '<img style="max-width:100%;" src="' + data.image_url + '" width="' + width + '"/>';
-  res.json({
-    body: html
-    // Add raw:true if you're returning content that you want the user to be able to edit
-  });
+  return `<a href="${question.link}" style="font-family: Roboto; color: ${colour}; font-size: 1em;">${question.title} (${question.answer_count} ${answerLabel})</a>`;
 }

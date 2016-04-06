@@ -18,20 +18,18 @@ module.exports = function(req, res) {
 
   let so = new Stackoverflow(key);
   so.search(term, 10, (err, response) => {
-    if (err) {
+    if (err || !response) {
       res.status(500).send('Error');
       return;
     }
-    console.log('stackoverflow response..');
-    console.log(response);
 
     let results = response.items.map((question) => {
       const colour = question.is_answered ? 'green' : 'red';
       const answerLabel = question.answer_count == 1 ? 'Answer' : 'Answers';
 
       return {
-        title: `<a href src="${question.link}" style="font-family: Roboto; color: ${colour}; font-size: 1em;">${question.title} (${question.answer_count} ${answerLabel})</a>`,
-        text: question.question_id.toString()
+        title: `<a href="${question.link}" style="font-family: Roboto; color: ${colour}; font-size: 1em; display: inline-block;">${question.title} (${question.answer_count} ${answerLabel})</a>`,
+        text: question.question_id
       };
     });
 

@@ -21,7 +21,24 @@ class Stackoverflow {
   }
 
   get(id, cb) {
-    return id;
+    const requestUrl = `${baseAPI}/questions/${id}?key=${this.apiKey}&site=stackoverflow`;
+    const requestOptions = {
+      url: requestUrl,
+      encoding: null,
+      headers: {
+        'Accept-Encoding': 'gzip'
+      }
+    };
+
+    request(requestOptions, (err, response, body) => {
+      if (err) {
+        return cb(err, null);
+      }
+
+      parseCompressedBody(body, (err, body) => {
+        cb(err, body);
+      });
+    });
   }
 
   search(s, limit, cb) {
@@ -35,6 +52,10 @@ class Stackoverflow {
     };
 
     request(requestOptions, (err, response, body) => {
+      if (err) {
+        return cb(err, null);
+      }
+
       parseCompressedBody(body, (err, body) => {
         cb(err, body);
       });
