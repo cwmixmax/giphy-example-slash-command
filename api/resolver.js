@@ -8,6 +8,7 @@ var _ = require('underscore');
 module.exports = function(req, res) {
   var term = req.query.text.trim();
 
+  console.log('resolving ', term);
   if (/^http:\/\/giphy\.com\/\S+/.test(term)) {
     // Special-case: handle strings in the special URL form that are suggested by the /typeahead
     // API. This is how the command hint menu suggests an exact Giphy image.

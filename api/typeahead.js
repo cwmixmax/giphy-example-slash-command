@@ -1,8 +1,9 @@
+'use strict';
+var Stackoverflow = require('../utils/stackoverflow');
 var key = require('../utils/key');
 var sync = require('synchronize');
 var request = require('request');
 var _ = require('underscore');
-
 
 // The Type Ahead API.
 module.exports = function(req, res) {
@@ -15,47 +16,32 @@ module.exports = function(req, res) {
     return;
   }
 
-  var response;
-  try {
-    response = sync.await(request({
-      url: 'http://api.giphy.com/v1/gifs/search',
-      qs: {
-        q: term,
-        limit: 15,
-        api_key: key
-      },
-      gzip: true,
-      json: true,
-      timeout: 10 * 1000
-    }, sync.defer()));
-  } catch (e) {
-    res.status(500).send('Error');
-    return;
-  }
+  let so = new Stackoverflow(key);
+  so.search(term, 10, (err, response) => {
+    if (err) {
+      res.status(500).send('Error');
+      return;
+    }
+    console.log('stackoverflow response..');
+    console.log(response);
 
-  if (response.statusCode !== 200 || !response.body || !response.body.data) {
-    res.status(500).send('Error');
-    return;
-  }
+    let results = response.items.map((question) => {
+      const colour = question.is_answered ? 'green' : 'red';
+      const answerLabel = question.answer_count == 1 ? 'Answer' : 'Answers';
 
-  var results = _.chain(response.body.data)
-    .reject(function(image) {
-      return !image || !image.images || !image.images.fixed_height_small;
-    })
-    .map(function(image) {
       return {
-        title: '<img style="height:75px" src="' + image.images.fixed_height_small.url + '">',
-        text: 'http://giphy.com/' + image.id
+        title: `<a href src="${question.link}" style="font-family: Roboto; color: ${colour}; font-size: 1em;">${question.title} (${question.answer_count} ${answerLabel})</a>`,
+        text: question.question_id.toString()
       };
-    })
-    .value();
+    });
 
-  if (results.length === 0) {
-    res.json([{
-      title: '<i>(no results)</i>',
-      text: ''
-    }]);
-  } else {
-    res.json(results);
-  }
+    if (results.length === 0) {
+      res.json([{
+        title: '<i>(no results)</i>',
+        text: ''
+      }]);
+    } else {
+      res.json(results);
+    }
+  });
 };

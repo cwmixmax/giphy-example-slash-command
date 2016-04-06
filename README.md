@@ -1,6 +1,6 @@
-# Giphy Slash Command for Mixmax
+# Stackoverflow Slash Command for Mixmax
 
-This is an open source Mixmax Slash Command. See <http://sdk.mixmax.com/docs/tutorial-giphy-slash-command> for more information about how to use this example code in Mixmax.
+This is an open source Stackoverflow Slash Command.
 
 ## Running locally
 
